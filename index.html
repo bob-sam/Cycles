@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Cycle tracker</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem('cycle-theme')==='light'?'light':'dark'}catch(e){document.documentElement.dataset.theme='dark'}</script>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;800&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#eef0f7;--card:#fff;--ink:#1d1b3a;--mute:#66647f;--line:#dcdfec;--per:#c2255c;--perbg:#fbdce7;--fert:#0f8b8d;--fertbg:#d5f0ef;--acc:#3b3a8f;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14132a;--card:#1e1d3a;--ink:#ecebfa;--mute:#a09ebf;--line:#33325a;--per:#ff6b9a;--perbg:#4a1f38;--fert:#4fd1c5;--fertbg:#12404a;--acc:#9a9aff;color-scheme:dark}}
@@ -80,6 +80,20 @@ main{padding-bottom:104px}
 [data-theme-btn][aria-pressed="true"]{background:var(--acc);color:var(--card);border-color:var(--acc)}
 .d{cursor:pointer}
 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+
+:root{--mute:#55536e}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--mute:#bdbbdc}}
+:root[data-theme="dark"]{--mute:#bdbbdc}
+:root[data-theme="light"]{color-scheme:only light}
+body{font-weight:500}
+.sub,.note,.up span,.h small{font-weight:500}
+.note{font-size:15px}
+label{font-weight:600;font-size:15px}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:16px}
+.stats div{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:grid;gap:2px;min-width:0;align-content:start}
+.stats span{font-size:14px;font-weight:600;color:var(--mute)}
+.stats b{font-size:20px;font-weight:800;line-height:1.25}
+.stats small{font-size:14px;font-weight:500;color:var(--mute);line-height:1.35}
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#3b3a8f">
 <meta name="mobile-web-app-capable" content="yes">
@@ -220,9 +234,11 @@ function render(){
     const nx=P.ok?P.preds[0]:last+28,diff=nx-T;
     const nxt=diff>1?'Next period in '+diff+' days':diff===1?'Next period tomorrow':diff===0?'Period expected today':Math.abs(diff)+(Math.abs(diff)===1?' day':' days')+' late';
     const pm=P.ok?Math.max(1,Math.round(P.sd)):0;
+    const tile=(a,b,c)=>'<div><span>'+a+'</span><b>'+b+'</b><small>'+c+'</small></div>';
+    const reg=!P.ok?['Not enough data','Log another cycle']:P.n<3?['Early estimate','Improves with more cycles']:P.sd>4?['Varies','Treat dates as a rough guide']:['Regular','Good estimate'];
     const conf=!P.ok?'Using a 28-day default. Log another cycle to personalize predictions.':P.n<3?'Early estimate. It sharpens as you log more cycles.':P.sd>4?'Your cycles vary a lot, so treat these dates as a rough guide.':'Your cycles are fairly regular, so this should be a good estimate.';
     const up=P.ok?'<div class="up">'+P.preds.map(ps=>'<div><b>Period from '+fmtS(ps)+'</b><span>Fertile '+fmtS(ps-19)+' to '+fmtS(ps-13)+', ovulation about '+fmtS(ps-14)+'</span></div>').join('')+'</div>':'';
-    h.innerHTML='<div class="ringw">'+svg+'<div class="ctr"><div class="dn">Day '+day+'</div><div class="pn">'+ph+' phase</div></div></div><p class="sub center">'+PH[ph][0]+(late?' Your period is late.':'')+'</p><div class="chips"><span>Fertility: '+fert+'</span><span>'+nxt+'</span></div>'+btn+alt+'<p class="note center">Expected '+fmt(nx)+(P.ok?', give or take '+pm+(pm===1?' day':' days'):'')+'. '+conf+' Estimates only, not birth control.</p>'+up;
+    h.innerHTML='<div class="ringw">'+svg+'<div class="ctr"><div class="dn">Day '+day+'</div><div class="pn">'+ph+' phase</div></div></div><p class="sub center">'+PH[ph][0]+(late?' Your period is late.':'')+'</p><div class="chips"><span>Fertility: '+fert+'</span><span>'+nxt+'</span></div>'+btn+alt+'<div class="stats">'+tile('Expected start',fmt(nx),P.ok?'give or take '+pm+(pm===1?' day':' days'):'based on a 28-day default')+tile('Cycle length',L+' days',P.ok?'average of your cycles':'default for now')+tile('Period length',per+' days','average length')+tile('Regularity',reg[0],reg[1])+'</div><p class="note center">Estimates only, not birth control.</p>'+up;
   }
   cal(P);hist();
 }
@@ -240,6 +256,8 @@ function go(t){
 }
 function setTheme(t,keep){
   document.documentElement.dataset.theme=t;
+  let cs=document.querySelector('meta[name="color-scheme"]');if(!cs){cs=document.createElement('meta');cs.name='color-scheme';document.head.appendChild(cs)}
+  cs.content=t==='light'?'only light':'dark';
   const tc=document.querySelector('meta[name="theme-color"]');if(tc)tc.content=t==='dark'?'#14132a':'#eef0f7';
   document.querySelectorAll('[data-theme-btn]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.themeBtn===t)));
   if(keep){try{localStorage.setItem('cycle-theme',t)}catch(e){}}
