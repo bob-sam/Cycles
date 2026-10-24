@@ -2,6 +2,7 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Cycle tracker</title>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('cycle-theme')==='light'?'light':'dark'}catch(e){document.documentElement.dataset.theme='dark'}</script>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#eef0f7;--card:#fff;--ink:#1d1b3a;--mute:#66647f;--line:#dcdfec;--per:#c2255c;--perbg:#fbdce7;--fert:#0f8b8d;--fertbg:#d5f0ef;--acc:#3b3a8f;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -56,6 +57,29 @@ textarea{min-height:90px;resize:vertical;font-size:14px}
 #lock input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;margin:0 0 12px;font-size:16px}
 #lock button{width:100%}
 #lock button.link{background:none;color:var(--mute);text-decoration:underline;padding:12px 0 0;font-weight:400;font-size:14px}
+
+:root{--lut:#a9781a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--lut:#e8c15a}}
+:root[data-theme="dark"]{--lut:#e8c15a}
+main{padding-bottom:104px}
+.tab{display:grid;gap:14px;min-width:0}
+#nav{position:fixed;left:0;right:0;bottom:0;z-index:10;display:flex;justify-content:center;gap:4px;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--line)}
+#nav button{flex:1;max-width:110px;display:grid;justify-items:center;gap:2px;background:none;color:var(--mute);padding:6px 4px;border-radius:12px;font-size:12px}
+#nav button[aria-current="page"]{background:var(--bg);color:var(--acc)}
+#nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ringw{position:relative;width:min(76vw,270px);margin:4px auto 10px}
+.ringw svg{display:block;width:100%;height:auto}
+.ctr{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.dn{font-size:38px;font-weight:800;line-height:1.1}
+.pn{font-size:15px;font-weight:600;color:var(--mute)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:8px 0 14px}
+.chips span{background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:14px;font-weight:600}
+.cta{width:100%;padding:16px;font-size:17px;border-radius:14px}
+#hero .ghost{width:100%;margin-top:8px}
+.center{text-align:center}
+[data-theme-btn][aria-pressed="true"]{background:var(--acc);color:var(--card);border-color:var(--acc)}
+.d{cursor:pointer}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
 </style><link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#3b3a8f">
 <meta name="mobile-web-app-capable" content="yes">
@@ -75,11 +99,10 @@ textarea{min-height:90px;resize:vertical;font-size:14px}
 <p class="msg err" id="lm" role="alert"></p>
 <button class="link" id="rs" hidden>Forgot it? Erase everything and start over</button>
 </div></div>
-<main id="app" hidden>
-
-<section id="hero"></section>
-
-<section>
+<div id="app" hidden>
+<main>
+<div class="tab" data-t="today"><section id="hero"></section></div>
+<div class="tab" data-t="cal" hidden><section>
   <div class="cal-h">
     <button class="ghost sm" id="prev" aria-label="Previous month">Back</button>
     <h2 id="mon"></h2>
@@ -92,8 +115,9 @@ textarea{min-height:90px;resize:vertical;font-size:14px}
     <span><i style="background:var(--fertbg)"></i>Fertile window</span>
     <span><i style="background:var(--fert);width:6px;height:6px"></i>Ovulation</span>
   </div>
-</section>
-
+  <p class="note">Tap a past day to log a period starting then.</p>
+</section></div>
+<div class="tab" data-t="log" hidden>
 <section>
   <h2>Log a cycle</h2>
   <div class="row">
@@ -103,7 +127,9 @@ textarea{min-height:90px;resize:vertical;font-size:14px}
   <button id="add">Save cycle</button>
   <p class="msg" id="m1" role="status"></p>
 </section>
-
+<section><h2>History</h2><div id="hist"></div></section>
+</div>
+<div class="tab" data-t="set" hidden>
 <section>
   <h2>Import past cycles</h2>
   <p class="sub">One cycle per line: start date, then end date if you know it. Dates as 2026-03-14 or 14/03/2026. JSON also works.</p>
@@ -115,15 +141,24 @@ textarea{min-height:90px;resize:vertical;font-size:14px}
   </div>
   <p class="msg" id="m2" role="status"></p>
 </section>
-
 <section>
-  <h2>History</h2>
-  <div id="hist"></div>
+  <h2>Appearance</h2>
+  <div class="acts"><button class="ghost" data-theme-btn="dark">Dark</button><button class="ghost" data-theme-btn="light">Light</button></div>
+</section>
+<section>
+  <h2>Privacy</h2>
   <div class="acts"><button class="ghost sm" id="lockbtn">Lock now</button><button class="ghost sm" id="clr">Delete all data</button></div>
   <p class="note">Everything is saved only on this device, encrypted with your passcode. The app locks itself after a minute in the background. Predictions are estimates from your own past cycles. Don’t use them as birth control.</p>
 </section>
-
+</div>
 </main>
+<nav id="nav" aria-label="Main">
+<button data-go="today" aria-current="page"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Today</button>
+<button data-go="cal"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Calendar</button>
+<button data-go="log"><svg viewBox="0 0 24 24"><path d="M8 7h11M8 12h11M8 17h11M4.5 7h.01M4.5 12h.01M4.5 17h.01"/></svg>Log</button>
+<button data-go="set"><svg viewBox="0 0 24 24"><path d="M5 8h14M5 16h14"/><circle cx="9" cy="8" r="2.2"/><circle cx="15" cy="16" r="2.2"/></svg>Settings</button>
+</nav>
+</div>
 <script>
 const KEY='cycle-tracker-v1';
 let cycles=[];
@@ -161,23 +196,59 @@ function predict(){
   return{ok:true,len,sd,per,last,n:r.length,preds};
 }
 
+const PH={Menstrual:['Your period is underway.','var(--per)'],Follicular:['The days after your period, before ovulation.','var(--acc)'],Ovulation:['Your most fertile days.','var(--fert)'],Luteal:['The days after ovulation, until your next period.','var(--lut)']};
+function lastStart(){return cycles.length?Math.max(...cycles.map(c=>d2n(c.s))):null}
 function render(){
-  const P=predict();
-  const h=$('#hero');
-  if(!cycles.length){
-    h.innerHTML='<h1>Next period</h1><div class="big">No data yet</div><p class="sub">Log your latest period or import past cycles below. Two or more cycles are needed for a prediction.</p>';
-  }else if(!P.ok){
-    h.innerHTML='<h1>Next period</h1><div class="big">Need one more</div><p class="sub">Your last period started '+fmt(P.last)+'. Add at least one earlier cycle so I can measure your cycle length.</p>';
+  const P=predict(),last=lastStart(),h=$('#hero');
+  const lc=last==null?null:cycles.find(c=>d2n(c.s)===last);
+  const inP=lc&&!lc.e&&T>=last&&T-last<15;
+  const btn=inP?'<button class="cta" id="ended">Period ended today</button>':'<button class="cta" id="started">Period started today</button>';
+  const alt='<button class="ghost" data-go="log">Log an earlier date</button>';
+  if(last==null){
+    h.innerHTML='<h2>Welcome</h2><p class="sub">Tap the button on the first day of your period, or import past cycles in Settings. Two logged cycles are enough for a prediction.</p>'+btn+alt;
   }else{
-    const nx=P.preds[0],diff=nx-T,pm=Math.max(1,Math.round(P.sd));
-    let big=diff>1?'In '+diff+' days':diff===1?'Tomorrow':diff===0?'Expected today':Math.abs(diff)+(Math.abs(diff)===1?' day':' days')+' late';
-    let conf=P.n<3?'Early estimate. It sharpens as you log more cycles.':P.sd>4?'Your cycles vary a lot, so treat these dates as a rough guide.':'Your cycles are fairly regular, so this should be a good estimate.';
-    h.innerHTML='<h1>Next period</h1><div class="big">'+big+'</div><p class="sub">Expected '+fmt(nx)+', give or take '+pm+(pm===1?' day':' days')+'. Average cycle: '+P.len+' days.</p><p class="note">'+conf+'</p><div class="up">'+
-      P.preds.map(ps=>'<div><b>Period from '+fmtS(ps)+'</b><span>Fertile '+fmtS(ps-19)+' to '+fmtS(ps-13)+', ovulation about '+fmtS(ps-14)+'</span></div>').join('')+'</div>';
+    const L=P.ok?P.len:28,per=P.per,ov=Math.max(per+3,L-14),tot=Math.max(L,ov+2);
+    const segs=[['Menstrual',1,per],['Follicular',per+1,ov-2],['Ovulation',ov-1,ov+1],['Luteal',ov+2,tot]];
+    const day=T-last+1,late=day>tot;
+    const ph=late?'Luteal':(segs.find(s=>day>=s[1]&&day<=s[2])||segs[3])[0];
+    const C=2*Math.PI*88;
+    let svg='<svg viewBox="0 0 220 220" role="img" aria-label="Cycle day '+day+', '+ph+' phase"><g transform="rotate(-90 110 110)" fill="none" stroke-width="14"><circle cx="110" cy="110" r="88" style="stroke:var(--line)"/>';
+    segs.forEach(s=>{const a=(s[1]-1)/tot*C,l=(s[2]-s[1]+1)/tot*C;svg+='<circle cx="110" cy="110" r="88" style="stroke:'+PH[s[0]][1]+'" stroke-dasharray="'+Math.max(l-2,1)+' '+C+'" stroke-dashoffset="'+(-a)+'"/>'});
+    const ang=(Math.min(day,tot)-.5)/tot*2*Math.PI-Math.PI/2;
+    svg+='</g><circle cx="'+(110+88*Math.cos(ang))+'" cy="'+(110+88*Math.sin(ang))+'" r="11" stroke-width="4" style="fill:var(--card);stroke:var(--ink)"/></svg>';
+    const fert=(!late&&day>=ov-5&&day<=ov+1)?((day>=ov-1&&day<=ov)?'Peak':'High'):'Low';
+    const nx=P.ok?P.preds[0]:last+28,diff=nx-T;
+    const nxt=diff>1?'Next period in '+diff+' days':diff===1?'Next period tomorrow':diff===0?'Period expected today':Math.abs(diff)+(Math.abs(diff)===1?' day':' days')+' late';
+    const pm=P.ok?Math.max(1,Math.round(P.sd)):0;
+    const conf=!P.ok?'Using a 28-day default. Log another cycle to personalize predictions.':P.n<3?'Early estimate. It sharpens as you log more cycles.':P.sd>4?'Your cycles vary a lot, so treat these dates as a rough guide.':'Your cycles are fairly regular, so this should be a good estimate.';
+    const up=P.ok?'<div class="up">'+P.preds.map(ps=>'<div><b>Period from '+fmtS(ps)+'</b><span>Fertile '+fmtS(ps-19)+' to '+fmtS(ps-13)+', ovulation about '+fmtS(ps-14)+'</span></div>').join('')+'</div>':'';
+    h.innerHTML='<div class="ringw">'+svg+'<div class="ctr"><div class="dn">Day '+day+'</div><div class="pn">'+ph+' phase</div></div></div><p class="sub center">'+PH[ph][0]+(late?' Your period is late.':'')+'</p><div class="chips"><span>Fertility: '+fert+'</span><span>'+nxt+'</span></div>'+btn+alt+'<p class="note center">Expected '+fmt(nx)+(P.ok?', give or take '+pm+(pm===1?' day':' days'):'')+'. '+conf+' Estimates only, not birth control.</p>'+up;
   }
   cal(P);hist();
 }
-
+function startToday(){
+  const td=n2d(T),last=lastStart();
+  if(cycles.some(c=>c.s===td))return go('log');
+  if(last!=null&&T-last<10&&!confirm('Your last period started '+(T-last)+' days ago. Log a new one anyway?'))return;
+  cycles.push({s:td,e:''});save();vy=+td.slice(0,4);vm=+td.slice(5,7)-1;render();
+}
+function endToday(){const last=lastStart(),c=cycles.find(x=>d2n(x.s)===last);if(!c)return;c.e=n2d(T);save();render()}
+function go(t){
+  document.querySelectorAll('.tab').forEach(x=>x.hidden=x.dataset.t!==t);
+  document.querySelectorAll('#nav button').forEach(b=>b.setAttribute('aria-current',b.dataset.go===t?'page':'false'));
+  scrollTo(0,0);
+}
+function setTheme(t,keep){
+  document.documentElement.dataset.theme=t;
+  const tc=document.querySelector('meta[name="theme-color"]');if(tc)tc.content=t==='dark'?'#14132a':'#eef0f7';
+  document.querySelectorAll('[data-theme-btn]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.themeBtn===t)));
+  if(keep){try{localStorage.setItem('cycle-theme',t)}catch(e){}}
+}
+document.querySelectorAll('[data-theme-btn]').forEach(b=>b.onclick=()=>setTheme(b.dataset.themeBtn,true));
+setTheme(document.documentElement.dataset.theme==='light'?'light':'dark',false);
+$('#nav').onclick=ev=>{const b=ev.target.closest('button');if(b)go(b.dataset.go)};
+$('#hero').onclick=ev=>{const b=ev.target.closest('button');if(!b)return;if(b.id==='started')startToday();else if(b.id==='ended')endToday();else if(b.dataset.go)go(b.dataset.go)};
+$('#cal').onclick=ev=>{const n=+(ev.target.dataset&&ev.target.dataset.n);if(!n||n>T)return;$('#s').value=n2d(n);$('#e').value='';go('log');say('m1','Start date set to '+fmt(n)+'. Tap Save cycle to log it.')};
 function cal(P){
   const map={};
   const mark=(n,c)=>{const rank={p:4,q:3,o:2,f:1};const cur=map[n]||[];
@@ -195,7 +266,7 @@ function cal(P){
   let html=['S','M','T','W','T','F','S'].map(d=>'<div class="dow">'+d+'</div>').join('');
   for(let i=0;i<off;i++)html+='<div></div>';
   for(let d=1;d<=dim;d++){const n=start+d-1;const cl=(map[n]||[]).join(' ');
-    html+='<div class="d '+cl+(n===T?' t':'')+'">'+d+'</div>'}
+    html+='<div class="d '+cl+(n===T?' t':'')+'" data-n="'+n+'">'+d+'</div>'}
   $('#cal').innerHTML=html;
 }
 
@@ -292,7 +363,7 @@ function showLock(m){
   $('#pw').value='';$('#pw2').value='';$('#lm').textContent='';
   $('#lock').hidden=false;$('#app').hidden=true;
 }
-function openApp(){$('#lock').hidden=true;$('#app').hidden=false;$('#pw').value='';$('#pw2').value='';render()}
+function openApp(){$('#lock').hidden=true;$('#app').hidden=false;go('today');$('#pw').value='';$('#pw2').value='';render()}
 function lockNow(){
   cycles=[];KO=null;
   ['s','e','paste'].forEach(i=>$('#'+i).value='');
